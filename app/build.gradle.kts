@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.chrisp.healthdetectwear"
-        minSdk = 30
+        minSdk = 28
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -66,16 +66,15 @@ dependencies {
     implementation(libs.core.splashscreen)
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
     // Health Services (for better heart rate access)
-    implementation("androidx.health:health-services-client:1.1.0-alpha05")
-    implementation("androidx.health:health-services-client:1.1.0-alpha05")
+    implementation("androidx.health:health-connect-client:1.0.0-alpha02")
 // For ListenableFuture support in coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.10.2")
 // Optional (recommended): Guava itself, for compatibility
-    implementation("com.google.guava:guava:33.0.0-android")
+    implementation("com.google.guava:guava:33.4.8-android")
 
     // Testing
     androidTestImplementation(platform(libs.compose.bom))

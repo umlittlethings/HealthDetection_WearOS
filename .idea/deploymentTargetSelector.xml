@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-07-17T04:25:47.178265900Z">
+        <DropdownSelection timestamp="2025-07-23T03:01:38.149444900Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\WINDOWS 11\.android\avd\Wear_OS_Large_Round.avd" />
+              <DeviceId pluginId="Default" identifier="serial=172.20.10.2:5555;connection=cda71efd" />
             </handle>
           </Target>
         </DropdownSelection>
