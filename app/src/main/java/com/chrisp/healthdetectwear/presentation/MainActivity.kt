@@ -1,34 +1,36 @@
 package com.chrisp.healthdetectwear.presentation
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.os.Bundle
-import android.util.Log
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
-import androidx.core.app.ActivityCompat
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.chrisp.healthdetectwear.R
 
-class MainActivity : ComponentActivity(), SensorEventListener {
-    private lateinit var sensorManager: SensorManager
-    private var heartRateSensor: Sensor? = null
+class MainActivity : ComponentActivity() {
+
     private lateinit var textHR: TextView
     private lateinit var startButton: Button
+    private lateinit var stopButton: Button
 
-    private val TAG = "HR_Monitor"
-    private val REQUEST_BODY_SENSORS = 1
-    private var isMonitoring = false
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            startHeartRateService()
+        } else {
+            textHR.setText(R.string.permission_denied)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Layout container
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(40, 100, 40, 40)
@@ -36,85 +38,53 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         textHR = TextView(this).apply {
             textSize = 24f
-            text = "Heart Rate: -- bpm"
+            setText(R.string.heart_rate_default)
         }
 
         startButton = Button(this).apply {
-            text = "Start Monitoring"
+            setText(R.string.start_monitoring)
             setOnClickListener {
-                if (!isMonitoring) {
-                    checkPermissionAndStart()
-                }
+                checkPermissionAndStart()
+            }
+        }
+
+        stopButton = Button(this).apply {
+            setText(R.string.stop_monitoring)
+            setOnClickListener {
+                stopHeartRateService()
+                textHR.setText(R.string.monitoring_stopped)
             }
         }
 
         layout.addView(textHR)
         layout.addView(startButton)
+        layout.addView(stopButton)
 
         setContentView(layout)
-
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        heartRateSensor = sensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE)
     }
 
     private fun checkPermissionAndStart() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BODY_SENSORS)
-            != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(Manifest.permission.BODY_SENSORS), REQUEST_BODY_SENSORS
-            )
-        } else {
-            initSensor()
-        }
-    }
+        when {
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.BODY_SENSORS
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                startHeartRateService()
+            }
 
-    private fun initSensor() {
-        if (heartRateSensor == null) {
-            Log.e(TAG, "No heart rate sensor available")
-            textHR.text = "Sensor HR tidak tersedia 😕"
-            return
-        }
-
-        if (!isMonitoring) {
-            sensorManager.registerListener(this, heartRateSensor, SensorManager.SENSOR_DELAY_NORMAL)
-            isMonitoring = true
-            Log.d(TAG, "Sensor HR mulai dipantau")
-            textHR.text = "Memulai monitoring..."
-        }
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_BODY_SENSORS) {
-            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
-                initSensor()
-            } else {
-                Log.e(TAG, "BODY_SENSORS permission denied")
-                textHR.text = "Izin BODY_SENSORS ditolak"
+            else -> {
+                permissionLauncher.launch(Manifest.permission.BODY_SENSORS)
             }
         }
     }
 
-    override fun onSensorChanged(event: SensorEvent) {
-        if (event.sensor.type == Sensor.TYPE_HEART_RATE) {
-            val bpm = event.values.firstOrNull()?.toInt() ?: return
-            textHR.text = "Heart Rate: $bpm bpm"
-            Log.d(TAG, "HR: $bpm bpm")
-        }
+    private fun startHeartRateService() {
+        val intent = Intent(this, HeartRateService::class.java)
+        startService(intent)
+        textHR.setText(R.string.monitoring_started)
     }
 
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        Log.d(TAG, "Accuracy changed: $accuracy")
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (isMonitoring) {
-            sensorManager.unregisterListener(this)
-        }
+    private fun stopHeartRateService() {
+        val intent = Intent(this, HeartRateService::class.java)
+        stopService(intent)
     }
 }

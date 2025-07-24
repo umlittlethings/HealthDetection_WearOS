@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" android:maxSdkVersion="35" />
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <!-- Wearable features -->
     <uses-feature android:name="android.hardware.type.watch" />
@@ -31,8 +32,8 @@
         <!-- Heart Rate Service with proper foreground service type -->
         <service
             android:name=".presentation.HeartRateService"
-            android:permission="com.google.android.wearable.healthservices.permission.PASSIVE_DATA_BINDING"
-            android:exported="true" />
+            android:enabled="true"
+            android:exported="false" />
 
         <!-- Standalone app metadata -->
         <meta-data
