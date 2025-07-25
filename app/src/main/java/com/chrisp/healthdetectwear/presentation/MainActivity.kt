@@ -11,6 +11,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.chrisp.healthdetectwear.R
+import android.os.Handler
+import android.os.Looper
+
 
 class MainActivity : ComponentActivity() {
 
@@ -63,6 +66,8 @@ class MainActivity : ComponentActivity() {
         setContentView(layout)
     }
 
+
+
     private fun checkPermissionAndStart() {
         when {
             ContextCompat.checkSelfPermission(
@@ -81,7 +86,14 @@ class MainActivity : ComponentActivity() {
         val intent = Intent(this, HeartRateService::class.java)
         startService(intent)
         textHR.setText(R.string.monitoring_started)
+
+        // Stop service automatically after 15 seconds
+        Handler(Looper.getMainLooper()).postDelayed({
+            stopHeartRateService()
+            textHR.setText(R.string.monitoring_stopped)
+        }, 30_000) // 15,000 ms = 15 seconds
     }
+
 
     private fun stopHeartRateService() {
         val intent = Intent(this, HeartRateService::class.java)
