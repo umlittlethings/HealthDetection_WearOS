@@ -20,5 +20,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "healthdetectwear"
-include(":app")
- 
+include(":wear")
+include(":phone")

@@ -16,8 +16,8 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.wearable.Wearable
-import com.google.android.gms.tasks.Tasks
 import kotlinx.coroutines.*
+import kotlinx.coroutines.tasks.await
 
 class HeartRateService : Service(), SensorEventListener {
 
@@ -25,6 +25,7 @@ class HeartRateService : Service(), SensorEventListener {
     private var heartRateSensor: Sensor? = null
     private val TAG = "HeartRateService"
     private val CHANNEL_ID = "hr_channel"
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onCreate() {
         super.onCreate()
@@ -36,21 +37,34 @@ class HeartRateService : Service(), SensorEventListener {
     }
 
     private fun sendHeartRateToPhone(bpm: Int) {
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             try {
                 val nodeClient = Wearable.getNodeClient(this@HeartRateService)
-                val nodes = Tasks.await(nodeClient.connectedNodes)
+                val messageClient = Wearable.getMessageClient(this@HeartRateService)
+
+                // Get connected nodes
+                val nodes = nodeClient.connectedNodes.await()
+                Log.d(TAG, "Connected nodes: ${nodes.size}")
+
+                if (nodes.isEmpty()) {
+                    Log.w(TAG, "No connected nodes found")
+                    return@launch
+                }
+
                 for (node in nodes) {
-                    val messageClient = Wearable.getMessageClient(this@HeartRateService)
+                    Log.d(TAG, "Sending heart rate $bpm to node: ${node.displayName}")
                     val message = bpm.toString()
+
                     messageClient.sendMessage(
                         node.id,
-                        "/heart-rate", // path
+                        "/heart-rate",
                         message.toByteArray()
-                    )
+                    ).await()
+
+                    Log.d(TAG, "Heart rate sent successfully to ${node.displayName}")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Gagal kirim heart rate: ${e.message}")
+                Log.e(TAG, "Failed to send heart rate: ${e.message}", e)
             }
         }
     }
@@ -61,15 +75,22 @@ class HeartRateService : Service(), SensorEventListener {
 
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Heart Rate Monitoring")
-            .setContentText("Memantau detak jantung kamu...")
+            .setContentText("Monitoring heart rate...")
             .setSmallIcon(R.drawable.ic_menu_info_details)
             .build()
 
         startForeground(1, notification)
 
-        heartRateSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
-        } ?: Log.e(TAG, "Heart Rate Sensor tidak tersedia")
+        heartRateSensor?.let { sensor ->
+            val registered = sensorManager.registerListener(
+                this,
+                sensor,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
+            Log.d(TAG, "Heart rate sensor registered: $registered")
+        } ?: run {
+            Log.e(TAG, "Heart Rate Sensor not available")
+        }
     }
 
     private fun createNotificationChannel() {
@@ -77,7 +98,7 @@ class HeartRateService : Service(), SensorEventListener {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Heart Rate Monitor",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_LOW
             )
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)
@@ -87,18 +108,22 @@ class HeartRateService : Service(), SensorEventListener {
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type == Sensor.TYPE_HEART_RATE) {
             val bpm = event.values.firstOrNull()?.toInt() ?: return
-            Log.d(TAG, "Heart Rate: $bpm bpm")
-            sendHeartRateToPhone(bpm)
+            if (bpm > 0) { // Only send valid heart rate values
+                Log.d(TAG, "Heart Rate detected: $bpm bpm")
+                sendHeartRateToPhone(bpm)
+            }
         }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        Log.d(TAG, "Accuracy changed: $accuracy")
+        Log.d(TAG, "Sensor accuracy changed: $accuracy")
     }
 
     override fun onDestroy() {
         super.onDestroy()
         sensorManager.unregisterListener(this)
+        serviceScope.cancel()
+        Log.d(TAG, "Service destroyed")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
