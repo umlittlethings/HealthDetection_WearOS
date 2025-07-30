@@ -1,4 +1,4 @@
-package com.chrisp.healthdetectwear.presentation.theme
+package com.chrisp.healthdetect.theme
 
 import androidx.compose.runtime.Composable
 import androidx.wear.compose.material.MaterialTheme

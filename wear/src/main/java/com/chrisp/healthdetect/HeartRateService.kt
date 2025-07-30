@@ -1,5 +1,6 @@
-package com.chrisp.healthdetectwear.presentation
+package com.chrisp.healthdetect
 
+import android.R
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -14,6 +15,9 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.google.android.gms.wearable.Wearable
+import com.google.android.gms.tasks.Tasks
+import kotlinx.coroutines.*
 
 class HeartRateService : Service(), SensorEventListener {
 
@@ -31,6 +35,26 @@ class HeartRateService : Service(), SensorEventListener {
         startForegroundService()
     }
 
+    private fun sendHeartRateToPhone(bpm: Int) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val nodeClient = Wearable.getNodeClient(this@HeartRateService)
+                val nodes = Tasks.await(nodeClient.connectedNodes)
+                for (node in nodes) {
+                    val messageClient = Wearable.getMessageClient(this@HeartRateService)
+                    val message = bpm.toString()
+                    messageClient.sendMessage(
+                        node.id,
+                        "/heart-rate", // path
+                        message.toByteArray()
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Gagal kirim heart rate: ${e.message}")
+            }
+        }
+    }
+
     @SuppressLint("ForegroundServiceType")
     private fun startForegroundService() {
         createNotificationChannel()
@@ -38,7 +62,7 @@ class HeartRateService : Service(), SensorEventListener {
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Heart Rate Monitoring")
             .setContentText("Memantau detak jantung kamu...")
-            .setSmallIcon(android.R.drawable.ic_menu_info_details)
+            .setSmallIcon(R.drawable.ic_menu_info_details)
             .build()
 
         startForeground(1, notification)
@@ -64,7 +88,7 @@ class HeartRateService : Service(), SensorEventListener {
         if (event.sensor.type == Sensor.TYPE_HEART_RATE) {
             val bpm = event.values.firstOrNull()?.toInt() ?: return
             Log.d(TAG, "Heart Rate: $bpm bpm")
-            // Simpan ke database atau kirim ke UI kalau dibutuhkan
+            sendHeartRateToPhone(bpm)
         }
     }
 

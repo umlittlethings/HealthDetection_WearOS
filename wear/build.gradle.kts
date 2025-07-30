@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.chrisp.healthdetectwear"
+    namespace = "com.chrisp.healthdetect"
     compileSdk = 36
 
     defaultConfig {
@@ -69,11 +69,13 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
+    implementation("com.google.android.gms:play-services-wearable:18.1.0")
+
     // Health Services (for better heart rate access)
     implementation("androidx.health:health-connect-client:1.0.0-alpha02")
-// For ListenableFuture support in coroutines
+    // For ListenableFuture support in coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.10.2")
-// Optional (recommended): Guava itself, for compatibility
+    // Optional (recommended): Guava itself, for compatibility
     implementation("com.google.guava:guava:33.4.8-android")
 
     // Testing
