@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
 
     <!-- Wearable features -->
     <uses-feature android:name="android.hardware.type.watch" />
@@ -33,7 +36,8 @@
         <service
             android:name=".HeartRateService"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="health" />
 
         <!-- Standalone app metadata -->
         <meta-data

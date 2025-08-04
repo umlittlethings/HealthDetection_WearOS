@@ -16,6 +16,7 @@ class MainActivity : Activity() {
     private val TAG = "MainActivity"
 
     private val heartRateReceiver = object : BroadcastReceiver() {
+        @SuppressLint("SetTextI18n")
         override fun onReceive(context: Context?, intent: Intent?) {
             Log.d(TAG, "Broadcast received with action: ${intent?.action}")
             if (intent?.action == "HEART_RATE_UPDATE") {
