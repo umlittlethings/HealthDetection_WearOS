@@ -6,96 +6,105 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import android.os.Handler
-import android.os.Looper
-
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var textHR: TextView
-    private lateinit var startButton: Button
-    private lateinit var stopButton: Button
+    private lateinit var startMonitoringBtn: Button
+    private lateinit var stopMonitoringBtn: Button
+    private lateinit var startExerciseBtn: Button
+    private lateinit var stopExerciseBtn: Button
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            startHeartRateService()
-        } else {
-            textHR.setText(R.string.permission_denied)
-        }
+    ) { isGranted ->
+        if (isGranted) startHeartRateService()
+        else textHR.text = "Permission denied"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val layout = LinearLayout(this).apply {
+        val innerLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(40, 100, 40, 40)
         }
 
+        val scrollView = ScrollView(this).apply {
+            addView(innerLayout)
+        }
+
         textHR = TextView(this).apply {
-            textSize = 24f
-            setText(R.string.heart_rate_default)
+            textSize = 20f
+            text = "Heart Rate Monitor"
         }
 
-        startButton = Button(this).apply {
-            setText(R.string.start_monitoring)
+        startMonitoringBtn = Button(this).apply {
+            text = "Start Monitoring"
+            setOnClickListener { checkPermissionAndStart() }
+        }
+
+        stopMonitoringBtn = Button(this).apply {
+            text = "Stop Monitoring"
             setOnClickListener {
-                checkPermissionAndStart()
+                stopService(Intent(this@MainActivity, HeartRateService::class.java))
+                textHR.text = "Monitoring stopped"
             }
         }
 
-        stopButton = Button(this).apply {
-            setText(R.string.stop_monitoring)
+        startExerciseBtn = Button(this).apply {
+            text = "Start Exercise"
             setOnClickListener {
-                stopHeartRateService()
-                textHR.setText(R.string.monitoring_stopped)
+                val intent = Intent(this@MainActivity, HeartRateService::class.java)
+                intent.action = "ACTION_START_EXERCISE"
+                startService(intent)
+                textHR.text = "Exercise started"
             }
         }
 
-        layout.addView(textHR)
-        layout.addView(startButton)
-        layout.addView(stopButton)
+        stopExerciseBtn = Button(this).apply {
+            text = "Stop Exercise"
+            setOnClickListener {
+                val intent = Intent(this@MainActivity, HeartRateService::class.java)
+                intent.action = "ACTION_STOP_EXERCISE"
+                startService(intent)
+                textHR.text = "Exercise stopped"
+            }
+        }
 
-        setContentView(layout)
+        // Tambahkan semua ke inner layout
+        innerLayout.apply {
+            addView(textHR)
+            addView(startMonitoringBtn)
+            addView(stopMonitoringBtn)
+            addView(startExerciseBtn)
+            addView(stopExerciseBtn)
+        }
+
+        setContentView(scrollView)
     }
 
 
-
     private fun checkPermissionAndStart() {
-        when {
-            ContextCompat.checkSelfPermission(
-                this, Manifest.permission.BODY_SENSORS
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                startHeartRateService()
-            }
-
-            else -> {
-                permissionLauncher.launch(Manifest.permission.BODY_SENSORS)
-            }
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BODY_SENSORS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            startHeartRateService()
+        } else {
+            permissionLauncher.launch(Manifest.permission.BODY_SENSORS)
         }
     }
 
     private fun startHeartRateService() {
         val intent = Intent(this, HeartRateService::class.java)
         startService(intent)
-        textHR.setText(R.string.monitoring_started)
-
-        // Stop service automatically after 15 seconds
-        Handler(Looper.getMainLooper()).postDelayed({
-            stopHeartRateService()
-            textHR.setText(R.string.monitoring_stopped)
-        }, 30_000) // 15,000 ms = 15 seconds
-    }
-
-
-    private fun stopHeartRateService() {
-        val intent = Intent(this, HeartRateService::class.java)
-        stopService(intent)
+        textHR.text = "Monitoring started"
     }
 }
