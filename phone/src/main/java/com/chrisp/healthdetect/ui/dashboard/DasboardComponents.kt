@@ -23,17 +23,21 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.airbnb.lottie.LottieComposition
 import com.airbnb.lottie.compose.*
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.rememberLottieComposition
@@ -42,7 +46,8 @@ import com.chrisp.healthdetect.ui.theme.DarkText
 import com.chrisp.healthdetect.ui.theme.HeartRateGreen
 import com.chrisp.healthdetect.ui.theme.LightGrayText
 import com.chrisp.healthdetect.ui.theme.OxygenBlue
-import com.chrisp.healthdetect.ui.theme.RiskLowGreen
+import com.chrisp.healthdetect.ui.util.formatTimeAgo
+import kotlinx.coroutines.delay
 
 @Composable
 fun LottieAnimationPlayer(
@@ -62,18 +67,27 @@ fun LottieAnimationPlayer(
 }
 
 @Composable
-fun VitalsSection(heartRate: Int, oxygenLevel: Int) {
+fun VitalsSection(
+    heartRate: Int,
+    oxygenLevel: Int,
+    lastUpdateTimestamp: Long,
+) {
     Row (
-        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ){
         HeartRateCard(
             modifier = Modifier.weight(1f),
-            heartRate = heartRate
+            heartRate = heartRate,
+            lastUpdateTimestamp = lastUpdateTimestamp
         )
 
         OxygenCard(
-            modifier = Modifier.weight(1f), oxygenLevel = oxygenLevel
+            modifier = Modifier
+                .weight(1f),
+            oxygenLevel = oxygenLevel
         )
     }
 }
@@ -81,44 +95,69 @@ fun VitalsSection(heartRate: Int, oxygenLevel: Int) {
 @Composable
 fun HeartRateCard(
     modifier: Modifier,
-    heartRate: Int
+    heartRate: Int,
+    lastUpdateTimestamp: Long
 ) {
+    var timeAgo by remember { mutableStateOf(formatTimeAgo(lastUpdateTimestamp)) }
+
+    LaunchedEffect(lastUpdateTimestamp) {
+        while (true) {
+            timeAgo = formatTimeAgo(lastUpdateTimestamp)
+            delay(60000)
+        }
+    }
     Card (
-        modifier = modifier.height(180.dp),
+        modifier = modifier.height(260.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = HeartRateGreen)
     ){
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(painterResource(id = R.drawable.heart_rate_icon), "Heart Rate", tint = Color.White)
+                Icon(
+                    painterResource(id = R.drawable.heart_rate_icon),
+                    "Heart Rate", tint = Color.White
+                )
                 Spacer(Modifier.width(8.dp))
-                Text("Detak Jantung", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    "Detak Jantung",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
             }
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.BottomStart
+            ) {
                 LottieAnimationPlayer(
                     animationRes = R.raw.heartbeat_animation,
-                    modifier = Modifier.fillMaxWidth().height(90.dp).offset(y = (-10).dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp)
+                        .offset(y = (-35).dp)
+                        .align(Alignment.BottomCenter)
                 )
                 Column {
                     Row(verticalAlignment = Alignment.Bottom) {
+                        Spacer(Modifier.height(10.dp))
                         Text("$heartRate",
                             fontSize = 40.sp,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             lineHeight = 40.sp
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(8.dp))
 
                         Text("BPM",
                             fontSize = 16.sp,
                             color = Color.White,
-                            modifier = Modifier.padding(bottom = 6.dp)
-                        )
-                        Text("2 mins ago",
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.8f)
+                            modifier = Modifier.padding(bottom = 1.dp)
                         )
                     }
+                    Text(timeAgo,
+                        fontSize = 12.sp,
+                        color = Color.LightGray.copy(alpha = 0.8f)
+                    )
                 }
             }
         }
@@ -128,30 +167,37 @@ fun HeartRateCard(
 @Composable
 fun OxygenCard(modifier: Modifier = Modifier, oxygenLevel: Int) {
     Card(
-        modifier = modifier.height(180.dp),
+        modifier = modifier.height(260.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, OxygenBlue)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(top = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painterResource(id = R.drawable.oxygen_icon),
                     "Oxygen",
-//                    tint = OxygenBlue
+                    tint = OxygenBlue,
+                    modifier = Modifier.padding(top = 10.dp, start = 15.dp, bottom = 10.dp, end = 5.dp)
                 )
-                Spacer(Modifier.width(8.dp))
-                Text("Oksigen", color = OxygenBlue, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "Oksigen",
+                    color = OxygenBlue,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
             }
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 LottieAnimationPlayer(
                     animationRes = R.raw.waves_animation,
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(12.dp))
+                        .scale(1.5f)
+
                 )
                 Icon(
                     painter = painterResource(id = R.drawable.water_drop),
@@ -160,7 +206,7 @@ fun OxygenCard(modifier: Modifier = Modifier, oxygenLevel: Int) {
                     tint = Color.Unspecified
                 )
                 Text(
-                    "$oxygenLevel",
+                    "$oxygenLevel%",
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
                     color = OxygenBlue
@@ -172,51 +218,66 @@ fun OxygenCard(modifier: Modifier = Modifier, oxygenLevel: Int) {
 
 @Composable
 fun RiskScoreCard(score: Int, riskInfo: RiskInfo) {
-    Card (
+    Row (
         modifier = Modifier
             .fillMaxWidth()
             .height(110.dp)
-        ,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.CenterStart
+            modifier = Modifier
+                .padding(start = 16.dp)
+                .size(80.dp)
+                .background(riskInfo.color.copy(alpha = 0.3f), CircleShape)
+                .border(2.dp, riskInfo.color, CircleShape),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .padding(start = 16.dp)
-                    .size(80.dp)
-                    .background(riskInfo.color.copy(alpha = 0.3f), CircleShape)
-                    .border(2.dp, riskInfo.color, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = score.toString(),
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text("Anda memiliki risiko", fontSize = 16.sp, color = DarkText)
-                Text(
-                    text = riskInfo.level,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = riskInfo.color
-                )
-                Text("untuk estimasi 10 tahun", fontSize = 12.sp, color = LightGrayText)
-            }
+            Text(
+                text = score.toString(),
+                fontSize = 36.sp,
+                fontWeight = FontWeight.Bold,
+                color = riskInfo.color
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column {
+            Text("Anda memiliki risiko", fontSize = 16.sp, color = DarkText)
+            Text(
+                text = riskInfo.level,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = riskInfo.color
+            )
+            Text(
+                "untuk estimasi 10 tahun",
+                fontSize = 12.sp,
+                color = LightGrayText
+            )
         }
     }
 }
 
-@Preview
+@Preview(showBackground = true, backgroundColor = 0xFFF0F2F5)
 @Composable
-fun RiskScoreCardPreview() {
+fun VitalsSectionPreview() {
+    VitalsSection(
+        heartRate = 88,
+        oxygenLevel = 98,
+        lastUpdateTimestamp = System.currentTimeMillis(),
+    )
+}
 
+@Preview(showBackground = true)
+@Composable
+fun RiskScoreCardLowRiskPreview() {
+    RiskScoreCard(score = 4, riskInfo = getAscvdRisk(4))
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RiskScoreCardHighRiskPreview() {
+    RiskScoreCard(score = 12, riskInfo = getAscvdRisk(12))
 }

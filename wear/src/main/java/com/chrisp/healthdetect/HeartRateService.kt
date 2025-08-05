@@ -1,168 +1,130 @@
 package com.chrisp.healthdetect
 
+import android.R
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
-import android.os.Build
-import android.os.IBinder
-import android.util.Log
-import android.widget.Toast
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
+import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.google.android.gms.wearable.Wearable
+import kotlinx.coroutines.*
+import kotlinx.coroutines.tasks.await
 
 class HeartRateService : Service(), SensorEventListener {
 
     private lateinit var sensorManager: SensorManager
     private var heartRateSensor: Sensor? = null
-    private var stepCounterSensor: Sensor? = null
-
-    private var isExerciseActive = false
-    private var totalHeartRate = 0f
-    private var heartRateSamples = 0
-    private var exerciseStartTime: Long = 0L
-    private var stepsAtStart = 0
-    private var currentStepCount = 0
-    private var lastStepUpdateTime: Long = 0L
-    private val stepUpdateInterval = 5000L
-
-    companion object {
-        const val CHANNEL_ID = "HeartRateMonitorChannel"
-        const val NOTIFICATION_ID = 1
-        const val TAG = "HeartRateService"
-    }
+    private val TAG = "HeartRateService"
+    private val CHANNEL_ID = "hr_channel"
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onCreate() {
         super.onCreate()
+
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         heartRateSensor = sensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE)
-        stepCounterSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
-        stepsAtStart = getSavedStepsAtStart()
 
-
-        heartRateSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
-        }
-
-        stepCounterSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
-        }
-
-        startForeground(NOTIFICATION_ID, createNotification())
-        Log.d(TAG, "Service created and sensors registered")
+        startForegroundService()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            "ACTION_START_EXERCISE" -> startExercise()
-            "ACTION_STOP_EXERCISE" -> stopExercise()
+    private fun sendHeartRateToPhone(bpm: Int) {
+        serviceScope.launch {
+            try {
+                val nodeClient = Wearable.getNodeClient(this@HeartRateService)
+                val messageClient = Wearable.getMessageClient(this@HeartRateService)
+
+                // Get connected nodes
+                val nodes = nodeClient.connectedNodes.await()
+                Log.d(TAG, "Connected nodes: ${nodes.size}")
+
+                if (nodes.isEmpty()) {
+                    Log.w(TAG, "No connected nodes found")
+                    return@launch
+                }
+
+                for (node in nodes) {
+                    Log.d(TAG, "Sending heart rate $bpm to node: ${node.displayName}")
+                    val message = bpm.toString()
+
+                    messageClient.sendMessage(
+                        node.id,
+                        "/heart-rate",
+                        message.toByteArray()
+                    ).await()
+
+                    Log.d(TAG, "Heart rate sent successfully to ${node.displayName}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send heart rate: ${e.message}", e)
+            }
         }
-        return START_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    @SuppressLint("ForegroundServiceType")
+    private fun startForegroundService() {
+        createNotificationChannel()
+
+        val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Heart Rate Monitoring")
+            .setContentText("Monitoring heart rate...")
+            .setSmallIcon(R.drawable.ic_menu_info_details)
+            .build()
+
+        startForeground(1, notification)
+
+        heartRateSensor?.let { sensor ->
+            val registered = sensorManager.registerListener(
+                this,
+                sensor,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
+            Log.d(TAG, "Heart rate sensor registered: $registered")
+        } ?: run {
+            Log.e(TAG, "Heart Rate Sensor not available")
+        }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Heart Rate Monitor",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type == Sensor.TYPE_HEART_RATE) {
+            val bpm = event.values.firstOrNull()?.toInt() ?: return
+            if (bpm > 0) { // Only send valid heart rate values
+                Log.d(TAG, "Heart Rate detected: $bpm bpm")
+                sendHeartRateToPhone(bpm)
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        Log.d(TAG, "Sensor accuracy changed: $accuracy")
+    }
 
     override fun onDestroy() {
         super.onDestroy()
         sensorManager.unregisterListener(this)
-        Log.d(TAG, "Service destroyed and sensors unregistered")
+        serviceScope.cancel()
+        Log.d(TAG, "Service destroyed")
     }
 
-    private fun saveStepsAtStart(value: Int) {
-        val prefs = getSharedPreferences("health_prefs", MODE_PRIVATE)
-        prefs.edit().putInt("steps_at_start", value).apply()
-    }
-
-    private fun getSavedStepsAtStart(): Int {
-        val prefs = getSharedPreferences("health_prefs", MODE_PRIVATE)
-        return prefs.getInt("steps_at_start", 0)
-    }
-
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event == null) return
-
-        when (event.sensor.type) {
-            Sensor.TYPE_HEART_RATE -> {
-                val heartRate = event.values[0]
-                if (heartRate > 0) {
-                    Log.d(TAG, "Heart Rate: $heartRate")
-                    if (isExerciseActive) {
-                        totalHeartRate += heartRate
-                        heartRateSamples++
-                    }
-                }
-            }
-
-            Sensor.TYPE_STEP_COUNTER -> {
-                val now = System.currentTimeMillis()
-                if (now - lastStepUpdateTime > stepUpdateInterval) {
-                    currentStepCount = event.values[0].toInt()
-                    lastStepUpdateTime = now
-                    Log.d(TAG, "Steps: $currentStepCount")
-                }
-            }
-
-        }
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-
-    private fun startExercise() {
-        isExerciseActive = true
-        stepsAtStart = currentStepCount
-        saveStepsAtStart(stepsAtStart)
-        exerciseStartTime = System.currentTimeMillis()
-        totalHeartRate = 0f
-        heartRateSamples = 0
-
-        heartRateSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
-            Log.d(TAG, "Heart rate sensor re-registered at start of exercise")
-        }
-
-        Toast.makeText(this, "Exercise started", Toast.LENGTH_SHORT).show()
-        Log.d(TAG, "Exercise started")
-    }
-
-    private fun stopExercise() {
-        isExerciseActive = false
-
-        val stepsDuringExercise = currentStepCount - stepsAtStart
-        val durationMinutes = (System.currentTimeMillis() - exerciseStartTime) / 1000 / 60f
-        val avgHeartRate = if (heartRateSamples > 0) totalHeartRate / heartRateSamples else 0f
-
-        val calories = (stepsDuringExercise * 0.04f) + ((avgHeartRate - 60).coerceAtLeast(0f) * durationMinutes * 0.1f)
-
-        Toast.makeText(this, "Exercise stopped\nCalories burned: $calories", Toast.LENGTH_LONG).show()
-
-        Log.d(TAG, "Exercise stopped")
-        Log.d(TAG, "Steps: $stepsDuringExercise, Avg HR: $avgHeartRate, Duration: $durationMinutes mins, Calories: $calories kcal")
-
-        heartRateSensor?.let {
-            sensorManager.unregisterListener(this, it)
-            Log.d(TAG, "Heart rate sensor unregistered after exercise")
-        }
-    }
-
-    private fun createNotification(): Notification {
-        val channelName = "Heart Rate Monitor"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                channelName,
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
-
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Monitoring Heart Rate")
-            .setContentText("Service is running...")
-            .build()
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 }
