@@ -112,7 +112,7 @@ fun DashboardScreen(
                     fontWeight = FontWeight.Bold,
                     color = DarkText,
                     modifier = Modifier
-                        .padding(top = 16.dp, bottom = 8.dp)
+                        .padding(top = 24.dp, bottom = 8.dp)
                 )
                 RiskScoreCard(score = framinghamScore, riskInfo = getFraminghamRisk(framinghamScore))
             }
@@ -130,8 +130,9 @@ fun GreetingHeader(username: String) {
         verticalAlignment = Alignment.CenterVertically
     ){
         Column {
-            Text("Selamat datang,", fontSize = 18.sp, color = LightGrayText)
-            Text(username, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkText)
+            Text("Selamat datang,", fontSize = 18.sp, color = Color.DarkGray)
+            Spacer(Modifier.height(5.dp))
+            Text(username, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = DarkText)
         }
     }
 }
