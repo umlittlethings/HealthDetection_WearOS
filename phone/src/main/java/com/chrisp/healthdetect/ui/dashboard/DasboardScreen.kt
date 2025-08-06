@@ -131,8 +131,8 @@ fun AppBottomNavigation() {
     }
 }
 
-@Preview
-@Composable
-fun DashboardScreenPreview() {
-    DashboardScreen(heartRate = 90,)
-}
+//@Preview
+//@Composable
+//fun DashboardScreenPreview() {
+//    DashboardScreen(heartRate = 90,)
+//}

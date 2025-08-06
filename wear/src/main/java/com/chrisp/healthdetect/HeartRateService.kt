@@ -14,6 +14,8 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.core.app.NotificationCompat
+import com.google.android.gms.tasks.Tasks
+import com.google.android.gms.wearable.Wearable
 
 class HeartRateService : Service(), SensorEventListener {
 
@@ -95,6 +97,7 @@ class HeartRateService : Service(), SensorEventListener {
                         heartRateSamples++
                     }
                 }
+                sendHeartRateToPhone(heartRate)
             }
 
             Sensor.TYPE_STEP_COUNTER -> {
@@ -146,6 +149,9 @@ class HeartRateService : Service(), SensorEventListener {
             sensorManager.unregisterListener(this, it)
             Log.d(TAG, "Heart rate sensor unregistered after exercise")
         }
+
+        val summary = "Calories: ${"%.2f".format(calories)}, Steps: $stepsDuringExercise, AvgHR: ${"%.2f".format(avgHeartRate)}, Duration: ${"%.1f".format(durationMinutes)}m"
+        sendExerciseSummaryToPhone(summary)
     }
 
     private fun createNotification(): Notification {
@@ -165,4 +171,39 @@ class HeartRateService : Service(), SensorEventListener {
             .setContentText("Service is running...")
             .build()
     }
+
+    private fun sendHeartRateToPhone(heartRate: Float) {
+        val client = Wearable.getMessageClient(this)
+        val heartRateStr = heartRate.toInt().toString()
+
+        // Kirim ke semua node yang terhubung
+        Thread {
+            try {
+                val nodes = Tasks.await(Wearable.getNodeClient(this).connectedNodes)
+                for (node in nodes) {
+                    client.sendMessage(node.id, "/heart-rate", heartRateStr.toByteArray())
+                }
+                Log.d(TAG, "Sent heart rate: $heartRateStr to phone")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send heart rate: ${e.message}", e)
+            }
+        }.start()
+    }
+
+    private fun sendExerciseSummaryToPhone(summary: String) {
+        val client = Wearable.getMessageClient(this)
+
+        Thread {
+            try {
+                val nodes = Tasks.await(Wearable.getNodeClient(this).connectedNodes)
+                for (node in nodes) {
+                    client.sendMessage(node.id, "/exercise-summary", summary.toByteArray())
+                }
+                Log.d(TAG, "Sent summary to phone: $summary")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send summary: ${e.message}", e)
+            }
+        }.start()
+    }
+
 }

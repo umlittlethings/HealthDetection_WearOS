@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
+import android.widget.Toast
 
 class MainActivity : Activity() {
     private lateinit var heartRateText: TextView
@@ -46,6 +47,13 @@ class MainActivity : Activity() {
         }
         Log.d(TAG, "Broadcast receiver registered")
 
+        val summaryFilter = IntentFilter("EXERCISE_SUMMARY_UPDATE")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(exerciseSummaryReceiver, summaryFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(exerciseSummaryReceiver, summaryFilter)
+        }
+
         // Start the WearableListenerService
         startWearableListenerService()
     }
@@ -79,6 +87,17 @@ class MainActivity : Activity() {
             Log.d(TAG, "Broadcast receiver unregistered")
         } catch (e: Exception) {
             Log.e(TAG, "Error unregistering receiver: ${e.message}")
+        }
+        unregisterReceiver(exerciseSummaryReceiver)
+    }
+
+    private val exerciseSummaryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "EXERCISE_SUMMARY_UPDATE") {
+                val summary = intent.getStringExtra("summary") ?: "No summary"
+                Log.d("MainActivity", "Summary received: $summary")
+                Toast.makeText(this@MainActivity, summary, Toast.LENGTH_LONG).show()
+            }
         }
     }
 }

@@ -91,7 +91,18 @@ class HeartRateWearableListenerService : WearableListenerService() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing heart rate message: ${e.message}", e)
             }
-        } else {
+        } else if (messageEvent.path == "/exercise-summary") {
+            val summary = String(messageEvent.data, Charsets.UTF_8)
+            Log.d(TAG, "Exercise summary received: $summary")
+
+            val broadcastIntent = Intent("EXERCISE_SUMMARY_UPDATE").apply {
+                putExtra("summary", summary)
+                addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+            }
+            sendBroadcast(broadcastIntent)
+        }
+
+    else {
             Log.w(TAG, "Received message with unexpected path: ${messageEvent.path}")
         }
     }
