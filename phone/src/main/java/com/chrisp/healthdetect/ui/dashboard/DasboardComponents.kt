@@ -111,8 +111,11 @@ fun HeartRateCard(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = HeartRateGreen)
     ){
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.padding(top = 16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 16.dp)
+            ) {
                 Icon(
                     painterResource(id = R.drawable.heart_rate_icon),
                     "Heart Rate", tint = Color.White
@@ -133,13 +136,15 @@ fun HeartRateCard(
                     animationRes = R.raw.heartbeat_animation,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(400.dp)
+                        .height(500.dp)
                         .offset(y = (-35).dp)
                         .align(Alignment.BottomCenter)
                 )
                 Column {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Spacer(Modifier.height(10.dp))
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        modifier = Modifier.padding(start = 16.dp)
+                    ) {
                         Text("$heartRate",
                             fontSize = 40.sp,
                             color = Color.White,
@@ -151,12 +156,13 @@ fun HeartRateCard(
                         Text("BPM",
                             fontSize = 16.sp,
                             color = Color.White,
-                            modifier = Modifier.padding(bottom = 1.dp)
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
                     Text(timeAgo,
                         fontSize = 12.sp,
-                        color = Color.LightGray.copy(alpha = 0.8f)
+                        color = Color.LightGray.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(start = 16.dp, bottom = 20.dp)
                     )
                 }
             }
@@ -205,12 +211,23 @@ fun OxygenCard(modifier: Modifier = Modifier, oxygenLevel: Int) {
                     modifier = Modifier.fillMaxSize(0.8f),
                     tint = Color.Unspecified
                 )
-                Text(
-                    "$oxygenLevel%",
-                    fontSize = 40.sp,
+
+                Row {
+                    Text (
+                    "$oxygenLevel",
+                    fontSize = 50.sp,
                     fontWeight = FontWeight.Bold,
-                    color = OxygenBlue
+                    color = OxygenBlue,
+                    modifier = Modifier.padding(top = 16.dp)
                 )
+                    Text(
+                        "%",
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OxygenBlue,
+                        modifier = Modifier.padding(start = 2.dp, top = 33.dp)
+                    ) }
+
             }
         }
     }

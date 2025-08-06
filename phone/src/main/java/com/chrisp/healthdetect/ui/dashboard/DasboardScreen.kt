@@ -140,8 +140,8 @@ fun GreetingHeader(username: String) {
 fun AppBottomNavigation() {
     var selectedItem by remember { mutableStateOf(0) }
     val items = listOf("Dashboard", "Aktivitas", "Cek Gizi", "Profil")
-    val icons = listOf(R.drawable.dashboard, R.drawable.activity, R.drawable.nutrition, R.drawable.profile)
-    val selectedIcons = listOf(R.drawable.dashboard_clicked, R.drawable.activity_clicked, R.drawable.nutrition_clicked, R.drawable.profile_clicked)
+    val icons = listOf(R.drawable.dashboard, R.drawable.activity, R.drawable.ion_nutrition, R.drawable.profile)
+    val selectedIcons = listOf(R.drawable.dashboard_clicked, R.drawable.activity_clicked, R.drawable.ion_nutrition_clicked, R.drawable.profile_clicked)
 
     NavigationBar(
         containerColor = Color.White,
